@@ -1,6 +1,3 @@
-import socket as sock
-import select, signal
-
 from accelerando.dispatcher import *
 from accelerando.handler import *
 
@@ -14,6 +11,12 @@ class TCPServer(object):
 
 	def init(self):
 		self.dispatcher = self.dispatcher_class(self.host, self.port, self.backlog)
+		if self.dispatcher is None:
+			raise Exception
 
 	def run(self, accept_handler=SimpleReactTCPHandler):
-		self.dispatcher.dispatch_loop(accept_handler)
+		if accept_handler is None:
+			raise Exception
+		if self.dispatcher is None:
+			raise Exception
+		self.dispatcher(accept_handler)

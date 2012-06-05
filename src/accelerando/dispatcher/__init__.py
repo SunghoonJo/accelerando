@@ -1,7 +1,6 @@
 
 class Dispatcher(object):
-	def dispatch_loop(self):
+	def __call__(self, accept_handler):
 		pass
-
 
 from accelerando.dispatcher.py_async import PythonAsyncCoreDispatcher

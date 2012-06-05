@@ -12,7 +12,16 @@ class ServerSession(Session):
 
 
 from accelerando.handler import TCPHandler
-class HTTPHandler(TCPHandler):
 
-	def execute(self):
+class HTTPRequest(object):
+	def __init__(self):
 		pass
+	
+class HTTPResponse(object):
+	def __init__(self):
+		pass
+
+class HTTPHandler(TCPHandler):
+	def __call__(self, socket, address):
+		request = HTTPRequest()
+		response = HTTPResponse()

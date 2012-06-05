@@ -3,30 +3,29 @@ import socket
 
 from accelerando.dispatcher import Dispatcher
 
-class PythonAsyncCoreDispatcher(Dispatcher, asyncore.dispatcher):
-	def __init__(self, hostname, port, backlog):
-		asyncore.dispatcher.__init__(self)
-		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.set_reuse_addr()
-		self.bind((hostname, port))
-		self.listen(backlog)
-
-	def handle_accept(self):
-		sockAndAddress = self.accept()
-		if sockAndAddress is None:
-			pass
-		else:
-			socket, address = sockAndAddress
-			if self.accept_handler is None:
+class PythonAsyncCoreDispatcher(Dispatcher):
+	class Instance(asyncore.dispatcher):
+		def handle_accept(self):
+			socket, address = self.accept()
+			if socket is None:
+				pass
+			elif self.accept_handler_class is None:
 				pass
 			else:
-				handler = self.accept_handler(socket, address)
-				handler.execute()
+				handler = self.accept_handler_class()
+				handler(socket, address)
 
-		pass
+	def __init__(self, hostname, port, backlog):
+		asyncore.dispatcher.__init__(self)
 
-	def dispatch_loop(self, accept_handler):
-		self.accept_handler = accept_handler
+		self.instance = self.Instance()
+		self.instance.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.instance.set_reuse_addr()
+		self.instance.bind((hostname, port))
+		self.instance.listen(backlog)
+
+	def __call__(self, accept_handler_class):
+		self.instance.accept_handler_class = accept_handler_class
 
 		asyncore.loop()
 

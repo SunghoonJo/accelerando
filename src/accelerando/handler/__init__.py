@@ -1,14 +1,14 @@
 
 class TCPHandler(object):
-	def __init__(self, socket, address):
-		self.socket = socket
-		self.address = address
-
-	def execute(self):
+	def __call___(self, socket, address):
 		pass
 
 class SimpleReactTCPHandler(TCPHandler):
-	def execute(self):
-		print(self.address)
+	def __call__(self, socket, address):
+		data = socket.recv(8192)
+		print("address : ", address)
+		print("data :")
+		print(data)
+
 
 from accelerando.handler.http import HTTPHandler
