@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-import os
-import sys
+import os, sys, imp
 
 sys.path.append(os.getcwd() + "/src")
 
-import accelerando.
-print(sys.path)
+from accelerando.tcp_server import TCPServer
+
+server = TCPServer('localhost', 3000)
+server.init()
+server.run()
