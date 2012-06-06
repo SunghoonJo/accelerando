@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, sys, imp
+import os, sys
 
 sys.path.append(os.getcwd() + "/src")
 
