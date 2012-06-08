@@ -25,3 +25,4 @@ class HTTPHandler(TCPHandler):
 	def __call__(self, socket, address):
 		request = HTTPRequest()
 		response = HTTPResponse()
+		socket.recv(1000)

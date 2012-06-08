@@ -13,6 +13,7 @@ class PythonAsyncCoreDispatcher(Dispatcher):
 				pass
 			else:
 				handler = self.accept_handler_class()
+				socket.setblocking(0)
 				handler(socket, address)
 
 	def __init__(self, hostname, port, backlog):
@@ -26,6 +27,6 @@ class PythonAsyncCoreDispatcher(Dispatcher):
 
 	def __call__(self, accept_handler_class):
 		self.instance.accept_handler_class = accept_handler_class
-
-		asyncore.loop()
+		
+#asyncore.loop()
 

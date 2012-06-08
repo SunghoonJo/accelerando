@@ -18,12 +18,21 @@ class EPollDispatcher(Dispatcher):
 		epoll = select.epoll()
 		epoll.register(serversocket.fileno(), select.EPOLLIN)
 		try:
+			connections = {};
 			while True:
 				events = epoll.poll(1)
 				for fileno, event in events:
 					if fileno == serversocket.fileno():
+						connection, address = serversocket.socket.accept()
+						connection.setblocking(0)
+						epoll.register(connection.fileno(), select.EPOLLIN)
+						connections[connection.fileno()] = connection
 					elif event & select.EPOLLIN:
 					elif event & select.EPOLLOUT:
+					elif event & select.EPOLLHUP:
+					 epoll.unregister(fileno)
+					 connections[fileno].close()
+					 del connections[fileno]
 		finally:
 			epoll.unregister(serversocket.fileno())
 			epoll.close()
