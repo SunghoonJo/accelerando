@@ -11,8 +11,6 @@ class ServerSession(Session):
 	pass
 
 
-from accelerando.handler import TCPHandler
-
 class HTTPRequest(object):
 	def __init__(self):
 		pass
@@ -21,6 +19,6 @@ class HTTPResponse(object):
 	def __init__(self):
 		pass
 
-class HTTPHandler(TCPHandler):
-	def __call__(self, request):
-		return request
+
+def http_handler(tcp_request, tcp_response):
+	pass

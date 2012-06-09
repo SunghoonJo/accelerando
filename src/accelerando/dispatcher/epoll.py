@@ -1,63 +1,70 @@
 import socket, select
 
+from accelerando.tcp import TCPRequest, TCPResponse
 from accelerando.dispatcher import Dispatcher
 
 class EPollDispatcher(Dispatcher):
 
-	def __call__(self, hostname, port, backlog, tcp_handler_class):
-		if not tcp_handler_class:
-			raise Exception
+	def initialize(self):
+		self._serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self._serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		self._serversocket.bind((self.hostname, self.port))
+		self._serversocket.listen(self.backlog)
+		self._serversocket.setblocking(0)
+		
+		self._epoll = select.epoll()
+		self._epoll.register(self._serversocket.fileno(), select.EPOLLIN)
 
-		serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		serversocket.bind((hostname, port))
-		serversocket.listen(backlog)
-		serversocket.setblocking(0)
+		self._connections = {}
+		self._requests = {}
+		self._responses = {}
 
-		epoll = select.epoll()
-		epoll.register(serversocket.fileno(), select.EPOLLIN)
-		try:
-			connections = {}; responses = {}
-			while True:
-				events = epoll.poll(1)
-				for fileno, event in events:
-					if fileno == serversocket.fileno():
-						connection, address = serversocket.accept()
-						connection.setblocking(0)
-						epoll.register(connection.fileno(), select.EPOLLIN)
-						connections[connection.fileno()] = connection
-					elif event & select.EPOLLIN:
-						client = connections[fileno]
-						request = b''	
-						try:
-							while True:
-								buffer_in = client.recv(4096)
-								if not buffer_in or buffer_in == b'':
-									break
-								request += buffer_in
-						except socket.error:
-							pass
-						
-						epoll.modify(fileno, select.EPOLLOUT)
-						print(address, " connected to server")
+	def dispatch_and_handle(self, tcp_handler):
+		if not tcp_handler:
+			raise Exception("TCPHandler is None")
 
-						tcp_handler = tcp_handler_class()
-						responses[client.fileno()] = tcp_handler(request)
-					elif event & select.EPOLLOUT:
-						client = connections[fileno]
-						byteswritten = client.send(responses[fileno])
-						responses[fileno] = responses[fileno][byteswritten:]
-						if len(responses[fileno]) == 0:
-							epoll.modify(fileno, select.EPOLLHUP)
-							client.shutdown(socket.SHUT_RDWR)
-					elif event & select.EPOLLHUP:
-						epoll.unregister(fileno)
-						connections[fileno].close()
-						del connections[fileno]
-						print(client, " epoll hup")
-		finally:
-			epoll.unregister(serversocket.fileno())
-			epoll.close()
-			serversocket.close()
-
-		return
+		while True:
+			events = self._epoll.poll(1)
+			for fileno, event in events:
+				if fileno == self._serversocket.fileno():
+					connection, address = self._serversocket.accept()
+					connection.setblocking(0)
+					self._epoll.register(connection.fileno(), select.EPOLLIN)
+					self._connections[connection.fileno()] = connection
+					self._requests[connection.fileno()] = b''
+					self._responses[connection.fileno()] = b''
+				elif event & select.EPOLLIN:
+					client = self._connections[fileno]
+					request = b''	
+					request = b''
+					try:
+						while True:
+							buffer_in = client.recv(4096)
+							if not buffer_in or buffer_in == b'':
+								break
+							request += buffer_in
+					except socket.error:
+						pass
+					self._epoll.modify(fileno, select.EPOLLOUT)
+					request = self._requests[fileno] = TCPRequest(address, request) 
+					response = self._responses[fileno] = TCPResponse()
+					tcp_handler(request, response)
+				elif event & select.EPOLLOUT:
+					client = self._connections[fileno]
+					response = self._responses[fileno]
+					byteswritten = client.send(response.data)
+					response.data = response.data[byteswritten:]
+					if len(response.data) == 0:
+						self._epoll.modify(fileno, select.EPOLLHUP)
+						client.shutdown(socket.SHUT_RDWR)
+				elif event & select.EPOLLHUP:
+					self._epoll.unregister(fileno)
+					self._connections[fileno].close()
+					del self._connections[fileno]
+					del self._requests[fileno]
+					del self._responses[fileno]
+	
+	def finalize(self):
+		self._epoll.unregister(self._serversocket.fileno())
+		self._epoll.close()
+		self._serversocket.close()
