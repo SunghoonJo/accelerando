@@ -5,8 +5,8 @@ import os, sys
 sys.path.append(os.getcwd() + "/src")
 
 from accelerando.tcp import TCPServer
-from accelerando.handler import HTTPHandler
+from accelerando.handler import HTTPProcessor
 from accelerando.dispatcher import EPollDispatcher
 
 server = TCPServer('localhost', 3000, 20, EPollDispatcher)
-server.run(HTTPHandler)
+server.run(HTTPProcessor)

@@ -1,12 +1,15 @@
-
-class TCPRequest(object):
-	def __init__(self, address, data):
+class TCPProcessor(object):
+	def __init__(self, address):
 		self.address = address
-		self.data = data
 
-class TCPResponse(object):
-	def __init__(self):
-		self.data = b''
+	def initialize(self):
+		pass
+
+	def receive_request(self, buffer_in):
+		pass
+
+	def handle_request(self):
+		pass
 
 class TCPServer(object):
 
