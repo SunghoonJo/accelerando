@@ -79,13 +79,13 @@ class HTTPRequestBuilder(object):
 						self.flag_header = False
 					end = i
 					flag_parse = True
-				if flag_parse and self.index < end:
+				if self.flag_header and flag_parse and self.index < end:
 					line = segments_buffer[self.index:end]
 					self.index = end + 2
 					elements = line.split(b': ')
 					self.headers[elements[0]] = elements[1]
 					flag_parse = False
-					if not flag_header:
+					if not self.flag_header:
 						self.index += 2
 			else:
 				self.body = segments_buffer[self.index:len_segments]
@@ -101,17 +101,11 @@ from accelerando.tcp import TCPProcessor
 class HTTPProcessor(TCPProcessor):
 
 	def handle_request(self, http_request):
-		print(http_request.method)
-		print(http_request.uri)
-		print(http_request.version)
-		for header, value in http_request.headers.items():
-			print(header, value)
-		print(http_request.body)
 		# file or wsgi handler will be here and process request
 		headers = {
 			b'Date': datetime.now().strftime('%a, %d %b %Y %H:%M:%S EDT').encode('UTF-8'),
 			b'Server': b'Accelerando',
 			b'Content-Type': b'text/html; charset=UTF-8'
 		}
-		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'This is Response!')
+		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Succes')
 		return http_response.to_bytes()
