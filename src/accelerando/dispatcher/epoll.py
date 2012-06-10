@@ -55,8 +55,6 @@ class EPollDispatcher(Dispatcher):
 						
 						request = parser.build()
 						response = processor.handle_request(request)
-						if not response:
-							response = b''
 						byteswritten = connection.send(response)
 						response = response[byteswritten:]
 						if len(response) == 0:
