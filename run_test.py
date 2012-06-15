@@ -7,10 +7,10 @@ sys.path.append(os.getcwd() + "/src")
 sys.path.append(os.getcwd() + "/test")
 
 TEST_MODULES = [
-	'wsgi_test'
+	'package_test'
 ]
 
 all_tests = unittest.defaultTestLoader.loadTestsFromNames(TEST_MODULES)
 
 if __name__ == '__main__':
-	unittest.main()	
+	unittest.TextTestRunner(verbosity=2).run(all_tests)	

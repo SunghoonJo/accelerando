@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+
+import sys,os
+
+from accelerando.util.instance import StandaloneHTTPInstance
+
+if __name__ == '__main__':
+	if len(sys.argv) < 2:
+		print("usage:", sys.argv[0], "start|stop|restart")
+	else:
+		print(os.getcwd())
+		StandaloneHTTPInstance('localhost', 4000).run_forever()

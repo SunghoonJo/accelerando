@@ -10,8 +10,8 @@ setup(
 		author_email='dongseob.park@gmail.com',
 		url='http://github.com/Dongseob-Park/accelerando',
 		package_dir={'': 'src'},
-		packages=['accelerando', 'accelerando.dispatcher', 'accelerando.processor'],
+		packages=['accelerando', 'accelerando.dispatcher', 'accelerando.processor', 'accelerando.util'],
 		data_files=[
-			('/usr/bin', ['bin/accel'])
+			('/usr/bin', ['bin/accelerando'])
 		]
 )
