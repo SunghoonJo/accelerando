@@ -1,3 +1,0 @@
-manifest(
-		name='Blog Application'
-)
