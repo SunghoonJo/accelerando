@@ -1,0 +1,3 @@
+
+class SelectorDispatcher(Dispatcher):
+	pass
