@@ -13,6 +13,7 @@ class ApplicationContext(object):
 		self.dispatcher_class = context_variables['dispatcher_class']
 		self.tcp_processor_class = context_variables['tcp_processor_class']
 		self.wsgi_handlers = context_variables['wsgi_handlers']
+		self.handler_mappings = context_variables['handler_mappings']
 
 def manifest(**kargs):
 	if kargs.get('hostname') is None:

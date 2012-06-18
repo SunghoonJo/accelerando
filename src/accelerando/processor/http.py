@@ -92,7 +92,10 @@ class HTTPProcessor(TCPProcessor):
 			b'Content-Type': b'text/html; charset=UTF-8'
 		}
 
-		print(self.application_context)
-
+		# if handler found, handler executes. no handler found, web directory handling and process another task.
+		# another task will be error handling. it will be processed by application server
+		handler_name = self.application_context.handler_mappings[http_request.uri]
+		handler = self.application_context.wsgi_handlers[handler_name]	
+		handler(None, None)
 		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Success')
 		return http_response.to_bytes()
