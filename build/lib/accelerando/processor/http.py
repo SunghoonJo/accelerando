@@ -39,6 +39,7 @@ class HTTPResponse(object):
 		out.write(b''.join([b'\r\n', self.body]))
 		return out.getvalue()
 
+from accelerando.core import *
 from accelerando.tcp import TCPProcessor
 
 class HTTPProcessor(TCPProcessor):
@@ -81,7 +82,6 @@ class HTTPProcessor(TCPProcessor):
 			if header_name == b'Content Length':
 				content_length = int(header_value)
 
-		print(version)
 		return HTTPRequest(method, uri, version, headers, content_length, body_bytes)
 	
 	def handle_request(self):
@@ -91,5 +91,8 @@ class HTTPProcessor(TCPProcessor):
 			b'Server': b'Accelerando',
 			b'Content-Type': b'text/html; charset=UTF-8'
 		}
+
+		print(self.application_context)
+
 		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Success')
 		return http_response.to_bytes()

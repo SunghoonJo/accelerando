@@ -31,7 +31,7 @@ class EPollDispatcher(Dispatcher):
 						self._epoll.register(connection.fileno(), select.EPOLLIN)
 
 						self._connections[connection.fileno()] = connection
-						self._processors[connection.fileno()] = processor_class(address)
+						self._processors[connection.fileno()] = processor_class(address, self.application_context)
 					elif event & select.EPOLLIN:
 						connection = self._connections[fileno]
 						processor = self._processors[fileno]

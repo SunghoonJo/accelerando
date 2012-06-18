@@ -1,3 +1,4 @@
+
 def application(env, start_response):
 	status = '200 OK'
 	response_headers = [('Content-type', 'text/plain')]
