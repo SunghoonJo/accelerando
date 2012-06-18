@@ -7,6 +7,7 @@ sys.path.append(os.getcwd() + "/src")
 sys.path.append(os.getcwd() + "/test")
 
 TEST_MODULES = [
+	'core_test'
 ]
 
 all_tests = unittest.defaultTestLoader.loadTestsFromNames(TEST_MODULES)
