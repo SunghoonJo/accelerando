@@ -1,12 +1,10 @@
+from io import BytesIO
+
 class TCPProcessor(object):
 	def __init__(self, address):
 		self.address = address
-
-	def initialize(self):
-		pass
-
-	def receive_request(self, buffer_in):
-		pass
+		self.socketin = BytesIO()
+		self.socketout = BytesIO()
 
 	def handle_request(self):
 		pass

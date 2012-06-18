@@ -1,8 +1,7 @@
 import socket, select
 
-from io import StringIO
+from io import BytesIO
 from accelerando.dispatcher import Dispatcher
-from accelerando.processor.http import HTTPRequestBuilder
 
 class EPollDispatcher(Dispatcher):
 
@@ -18,11 +17,10 @@ class EPollDispatcher(Dispatcher):
 
 		self._connections = {}
 		self._processors = {}
-		self._parsers = {}
 
 	def dispatch_and_handle(self, processor_class):
 		if not processor_class:
-			raise Exception("TCPProcessor is None is None")
+			raise Exception("TCPProcessor is None")
 		try:
 			while True:
 				events = self._epoll.poll(1)
@@ -34,29 +32,25 @@ class EPollDispatcher(Dispatcher):
 
 						self._connections[connection.fileno()] = connection
 						self._processors[connection.fileno()] = processor_class(address)
-						self._parsers[connection.fileno()] = HTTPRequestBuilder()
 					elif event & select.EPOLLIN:
 						connection = self._connections[fileno]
 						processor = self._processors[fileno]
-						parser = self._parsers[fileno] 
 						try:
 							while True:	
 								segment = connection.recv(4096)
-								if not segment or segment == b'':
+								if len(segment) == 0:
+									print("read segment complete")
 									break
-								parser.parse_segment(segment)
-						except socket.error:
+								processor.socketin.write(segment)
+						except socket.error as e:
+							code, message = e.args
 							pass
 						self._epoll.modify(fileno, select.EPOLLOUT)
 					elif event & select.EPOLLOUT:
 						connection = self._connections[fileno]
 						processor = self._processors[fileno]
-						parser = self._parsers[fileno] 
 						
-						request = parser.build()
-						response = processor.handle_request(request)
-						if not response:
-							response = b''
+						response = processor.handle_request()
 						byteswritten = connection.send(response)
 						response = response[byteswritten:]
 						if len(response) == 0:
@@ -67,7 +61,6 @@ class EPollDispatcher(Dispatcher):
 						self._connections[fileno].close()
 						del self._connections[fileno]
 						del self._processors[fileno]
-						del self._parsers[fileno]
 		except KeyboardInterrupt:
 			print("Keyboard Interrupt")
 

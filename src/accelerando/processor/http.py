@@ -1,3 +1,4 @@
+import sys, os
 from datetime import datetime
 from io import BytesIO
 
@@ -14,11 +15,12 @@ class ServerSession(Session):
 	pass
 
 class HTTPRequest(object):
-	def __init__(self, method, uri, version, headers = {}, body = None):
+	def __init__(self, method, uri, version, headers, content_length, body = None):
 		self.method = method
 		self.uri = uri
 		self.version = version
 		self.headers = headers
+		self.content_length = content_length
 		self.body = body
 
 class HTTPResponse(object):
@@ -37,75 +39,57 @@ class HTTPResponse(object):
 		out.write(b''.join([b'\r\n', self.body]))
 		return out.getvalue()
 
-INT_CR = int.from_bytes(b'\r', 'little')
-INT_LF = int.from_bytes(b'\n', 'little')
-
-class HTTPRequestBuilder(object):
-	def __init__(self):
-		self.segments = BytesIO()
-		self.index = 0
-		self.flag_header = True
-
-		self.method = None 
-		self.uri = None
-		self.version = None
-		self.url = None
-		self.port = None
-		self.headers = {}
-		self.body = None
-
-	def parse_segment(self, segment):
-		self.segments.write(segment)
-		segments_buffer = self.segments.getvalue()
-		flag_parse = False
-		end = 0
-		len_segments = len(segments_buffer)
-		for i in range(self.index, len_segments):
-			if not self.method or not self.uri or not self.version:
-				if i+1 < len_segments and segments_buffer[i] == INT_CR and segments_buffer[i+1] == INT_LF:
-					end = i
-					flag_parse = True
-				if flag_parse and self.index < end:
-					line = segments_buffer[self.index:end]
-					self.index = end + 2
-					elements = line.split()
-					self.method = elements[0]
-					self.uri = elements[1]
-					self.version = elements[2]
-					flag_parse = False
-			elif self.flag_header:
-				if i+1 < len_segments and segments_buffer[i] == INT_CR and segments_buffer[i+1] == INT_LF:	
-					if i+3 < len_segments and segments_buffer[i+2] == INT_CR and segments_buffer[i+3] == INT_LF:	
-						self.flag_header = False
-					end = i
-					flag_parse = True
-				if self.flag_header and flag_parse and self.index < end:
-					line = segments_buffer[self.index:end]
-					self.index = end + 2
-					elements = line.split(b': ')
-					self.headers[elements[0]] = elements[1]
-					flag_parse = False
-					if not self.flag_header:
-						self.index += 2
-			else:
-				self.body = segments_buffer[self.index:len_segments]
-				break
-			
-
-	def build(self):
-		http_request = HTTPRequest(self.method, self.uri, self.version, self.headers, self.body)
-		return http_request
-
 from accelerando.tcp import TCPProcessor
 
 class HTTPProcessor(TCPProcessor):
 
-	def handle_request(self, http_request):
-		# file or wsgi handler will be here and process request
+	def _parse_http_request(self):
+		request_bytes = self.socketin.getvalue()
+		len_bytes = len(request_bytes)
+		header_start = 0
+		header_end = 0;
+		body_start = 0;
+		status_line_found = False
+		for i in range(0, len_bytes-3):
+			if not status_line_found:
+				if b'\r\n' == request_bytes[i:i+2]:
+					header_start = i+2
+					status_line_found = True
+			elif b'\r\n\r\n' == request_bytes[i:i+4]:
+				header_end = i
+				body_start = i+4
+				break;
+
+		status_line = request_bytes[0:header_start-2]
+		header_bytes = request_bytes[header_start:header_end]
+		body_bytes = request_bytes[body_start:len_bytes]
+
+		method, uri, version = None, None, None
+		for value in status_line.split(b' '):
+			if not method:
+				method = value
+			elif not uri:
+				uri = value
+			else:
+				version = value.split(b'/')[1]
+
+		headers = {}
+		content_length = 0
+		for header_token in header_bytes.split(b'\r\n'):
+			header_name, header_value = header_token.split(b': ')
+			headers[header_name] = header_value
+			if header_name == b'Content Length':
+				content_length = int(header_value)
+
+		return HTTPRequest(method, uri, version, headers, content_length, body_bytes)
+	
+	def handle_request(self):
+		http_request = self._parse_http_request()
 		headers = {
 			b'Date': datetime.now().strftime('%a, %d %b %Y %H:%M:%S EDT').encode('UTF-8'),
 			b'Server': b'Accelerando',
 			b'Content-Type': b'text/html; charset=UTF-8'
 		}
-		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Succes')
+
+		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Success')
 		return http_response.to_bytes()

@@ -1,14 +1,8 @@
 import os.path
 
-def load_application(application_script_path):
-	if os.path.exists(application_script_path):
-		application_script = StringIO()
-		with open(application_script_path) as f:
-			application_script.write(fp.read())
-
-		f.close()
-		eval(application_script)
-		return application
+def load_application(application_manifest_name='manifest'):
+	application_manifest = __import__(application_manifest_name)
+	if application_manifest is not None:
+		return application_manifest
 	else:
 		raise Exception
-
