@@ -15,7 +15,7 @@ class ServerSession(Session):
 	pass
 
 class HTTPRequest(object):
-	def __init__(self, method, uri, version, headers, content_length, body = None):
+	def __init__(self, method, uri, version, headers, content_length, body=None):
 		self.method = method
 		self.uri = uri
 		self.version = version
@@ -24,25 +24,28 @@ class HTTPRequest(object):
 		self.body = body
 
 class HTTPResponse(object):
-	def __init__(self, version, status_code, headers = {}, body = b''):
+	def __init__(self, version, status=None, headers=None, body=BytesIO()):
 		self.version = version
-		self.status_code = status_code
+		self.status= status
 		self.headers = headers
 		self.body = body
 	
 	def to_bytes(self):
 		out = BytesIO() 
-		
-		out.write(b''.join([b'HTTP/', b'.'.join(map(bytes, self.version)), b' ', bytes(self.status_code), b'\r\n']))
+		out.write(b''.join([b'HTTP/', self.version, b' ', self.status, b'\r\n']))
 		for header, value in self.headers.items():
 			out.write(b''.join([header, b': ', value, b'\r\n']))
-		out.write(b''.join([b'\r\n', self.body]))
+		out.write(b''.join([b'\r\n', self.body.getvalue()]))
 		return out.getvalue()
 
 from accelerando.core import *
 from accelerando.tcp import TCPProcessor
 
 class HTTPProcessor(TCPProcessor):
+
+	def __init__(self, address, application_context):
+		super().__init__(address, application_context)
+		self._env = {}
 
 	def _parse_http_request(self):
 		request_bytes = self.socketin.getvalue()
@@ -83,17 +86,57 @@ class HTTPProcessor(TCPProcessor):
 				content_length = int(header_value)
 
 		return HTTPRequest(method, uri, version, headers, content_length, body_bytes)
+
+	def _route(self, uri):
+		handler_name = self.application_context.handler_mappings[uri]
+		handler = self.application_context.wsgi_handlers[handler_name]	
+
+		return handler
 	
+	def _write(self, data):
+		assert type(data) is bytes
+		self._http_response.body.write(data)
+
+	def _start_response(self, status, headers, exc_info=None):
+		assert self._http_response is not None
+		if exc_info:
+			try:
+				#below codes are not valid
+				if self.headers_sent:
+					raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
+			finally:
+					exc_info = None
+		elif self._http_response.headers is not None:
+			 raise AssertionError("Headers already set!")
+
+		self._http_response.status = status
+		if self._http_response.headers is None:
+			self._initialize_headers()
+
+		for t in headers:
+			self._http_response.headers[t[0]] = t[1]
+		
+		return self._write
+
+	def _initialize_headers(self):
+		self._http_response.headers = {}
+		self._http_response.headers[b'Date'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S EDT').encode('UTF-8')
+		self._http_response.headers[b'Server'] = b'Accelerando'
+
 	def handle_request(self):
 		http_request = self._parse_http_request()
-		headers = {
-			b'Date': datetime.now().strftime('%a, %d %b %Y %H:%M:%S EDT').encode('UTF-8'),
-			b'Server': b'Accelerando',
-			b'Content-Type': b'text/html; charset=UTF-8'
-		}
 		
-		handler_name = self.application_context.handler_mappings[http_request.uri]
-		handler = self.application_context.wsgi_handlers[handler_name]	
-		handler(None, None)
-		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Success')
-		return http_response.to_bytes()
+		handler = self._route(http_request.uri)
+		
+		self._http_response = HTTPResponse(http_request.version)
+		result = handler(self._env, self._start_response)
+		try:
+			for data in result:
+				if data:
+					self._write(data)
+		finally:
+			if hasattr(result, 'close'):
+				result.close()
+			
+		return self._http_response.to_bytes()
+			
