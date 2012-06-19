@@ -45,7 +45,6 @@ class HTTPProcessor(TCPProcessor):
 
 	def __init__(self, address, application_context):
 		super().__init__(address, application_context)
-		self._env = {}
 
 	def _parse_http_request(self):
 		request_bytes = self.socketin.getvalue()
@@ -88,10 +87,14 @@ class HTTPProcessor(TCPProcessor):
 		return HTTPRequest(method, uri, version, headers, content_length, body_bytes)
 
 	def _route(self, uri):
-		handler_name = self.application_context.handler_mappings[uri]
-		handler = self.application_context.wsgi_handlers[handler_name]	
-
-		return handler
+		if self.application_context.handler_mappings.get(uri):
+			handler_name = self.application_context.handler_mappings[uri]
+			if self.application_context.wsgi_handlers.get(handler_name):
+				handler = self.application_context.wsgi_handlers[handler_name]	
+				if handler:
+					return handler
+		
+		raise Exception("NO HANDLER FOUND")
 	
 	def _write(self, data):
 		assert type(data) is bytes
@@ -119,17 +122,34 @@ class HTTPProcessor(TCPProcessor):
 		return self._write
 
 	def _initialize_headers(self):
+		assert self._http_response.headers is None
 		self._http_response.headers = {}
 		self._http_response.headers[b'Date'] = datetime.now().strftime('%a, %d %b %Y %H:%M:%S EDT').encode('UTF-8')
 		self._http_response.headers[b'Server'] = b'Accelerando'
 
+	def _initialize_environment(self, http_request):
+		env = {}
+		env['REQUEST_METHOD'] = http_request.method
+		if self.application_context.handler_mappings.get(http_request.uri):
+			env['SCRIPT_NAME'] = self.application_context.handler_mappings[http_request.uri]
+		env['PATH_INFO'] = ''
+		env['QUERY_STRING'] = ''
+		if http_request.headers.get(b'Content-Type'):
+			env['CONTENT_TYPE'] = http_request.headers[b'Content-Type']
+		if http_request.headers.get(b'Content-Length'):
+			env['CONTENT_LENGTH'] = http_request.headers[b'Content-Length']
+		env['SERVER_NAME'] = ''
+		env['SERVER_PORT'] = ''
+#another http headers are here
+		return env
+
 	def handle_request(self):
 		http_request = self._parse_http_request()
-		
+		env = self._initialize_environment(http_request)
 		handler = self._route(http_request.uri)
 		
 		self._http_response = HTTPResponse(http_request.version)
-		result = handler(self._env, self._start_response)
+		result = handler(env, self._start_response)
 		try:
 			for data in result:
 				if data:
