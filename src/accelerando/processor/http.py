@@ -93,9 +93,8 @@ class HTTPProcessor(TCPProcessor):
 				handler = self.application_context.wsgi_handlers[handler_name]	
 				if handler:
 					return handler
-		
-		raise Exception("NO HANDLER FOUND")
-	
+		return None	
+
 	def _write(self, data):
 		assert type(data) is bytes
 		self._http_response.body.write(data)
@@ -148,6 +147,9 @@ class HTTPProcessor(TCPProcessor):
 		env = self._initialize_environment(http_request)
 		handler = self._route(http_request.uri)
 		
+		if handler is None:
+			return b'No Handler Defined'
+			
 		self._http_response = HTTPResponse(http_request.version)
 		result = handler(env, self._start_response)
 		try:

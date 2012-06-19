@@ -8,6 +8,7 @@ APPLICATION_CONTEXT = manifest(
 			'handler2': handler2.application
 		},
 		handler_mappings={
-			b'/': 'handler1'
+			b'/': 'handler1',
+			b'/handler2': 'handler2'
 		}
 )
