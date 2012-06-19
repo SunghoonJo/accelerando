@@ -83,7 +83,12 @@ class HTTPProcessor(TCPProcessor):
 				content_length = int(header_value)
 
 		return HTTPRequest(method, uri, version, headers, content_length, body_bytes)
-	
+
+	def route(self, uri):
+		handler_name = self.application_context.handler_mappings[http_request.uri]
+		handler = self.application_context.wsgi_handlers[handler_name]	
+		handler(None, None)
+
 	def handle_request(self):
 		http_request = self._parse_http_request()
 		headers = {
@@ -91,11 +96,19 @@ class HTTPProcessor(TCPProcessor):
 			b'Server': b'Accelerando',
 			b'Content-Type': b'text/html; charset=UTF-8'
 		}
-
-		# if handler found, handler executes. no handler found, web directory handling and process another task.
-		# another task will be error handling. it will be processed by application server
-		handler_name = self.application_context.handler_mappings[http_request.uri]
-		handler = self.application_context.wsgi_handlers[handler_name]	
-		handler(None, None)
+		handler = self.route(http_request.uri)
+		result = handler(env, start_response)
+		try:
+			for data in result:
+				if data:
+					write(data)
+				if not headers_sent:
+					write('')
+		finally:
+			if hasattr(result, 'close'):
+				result.close()
+	
 		http_response = HTTPResponse(http_request.version, b'200 OK', headers, b'Success')
+		
 		return http_response.to_bytes()
+			
