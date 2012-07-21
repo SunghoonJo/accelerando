@@ -9,3 +9,5 @@ def release():
 import accelerando.auth
 import accelerando.auth.digest
 import accelerando.session
+
+import accelerando.server

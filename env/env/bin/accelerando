@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+
+import accelerando
+
+if __name__ == '__main__':
+    accelerando.server.start()

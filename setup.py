@@ -2,6 +2,12 @@
 
 from distutils.core import setup
 
+data_files = [
+    ('/usr/bin', ['bin/accelerando'])
+]
+if True:
+    data_files = []
+
 setup(
     name='accelerando',
     version='0.1',
@@ -10,8 +16,6 @@ setup(
     author_email='dongseob.park@gmail.com',
     url='http://github.com/Dongseob-Park/accelerando',
     package_dir={'': 'lib'},
-    packages=['wsgi', 'wsgi.auth', 'wsgi.auth.digest', 'wsgi.session'],
-    data_files=[
-        ('/usr/bin', ['bin/wsgiup'])
-        ]
+    packages=['accelerando', 'accelerando.auth', 'accelerando.auth.digest', 'accelerando.session'],
+    data_files=data_files
 )
